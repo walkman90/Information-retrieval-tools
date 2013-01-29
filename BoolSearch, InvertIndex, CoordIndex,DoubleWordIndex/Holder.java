@@ -9,10 +9,10 @@ import java.util.*;
  * @author Walkman
  */
 public class Holder {
+    private static int FREE_DOC_ID;
+    private int docNumber;
     private HashMap<String, BitSet> matrix;
     private ArrayList<String> docIdList;
-    private static int freeDocId;
-    private int docNumber;
     private HashMap<String, ArrayList<Integer>> invertIndex;
     private HashMap<String, Set<Integer>> doubleWordIndex;
     private HashMap<String, HashMap<Integer,ArrayList<Integer>>> coordIndex;
@@ -23,11 +23,18 @@ public class Holder {
         invertIndex = new HashMap<>();
         doubleWordIndex = new HashMap<>();
         coordIndex = new HashMap<>();
-        freeDocId = 0;
+        FREE_DOC_ID = 0;
         docNumber = 0;
     }
     
-   public void fillMatrix(final File folder) throws FileNotFoundException, UnsupportedEncodingException {
+   /**
+    * Filling the incidence matrix
+    * @param folder - Folder with documents 
+    * @throws FileNotFoundException
+    * @throws UnsupportedEncodingException 
+    */
+   public void fillMatrix(final File folder) throws FileNotFoundException,
+   UnsupportedEncodingException {
         docNumber = folder.list().length;
         for (final File fileEntry : folder.listFiles()) {
             if (fileEntry.isDirectory()) {
@@ -45,21 +52,20 @@ public class Holder {
                 String lastName = content.substring(
                         content.indexOf("<last-name>")+11,
                         content.indexOf("</last-name>"));
-                this.addToMatrix(firstName.toLowerCase(), freeDocId);
-                this.addToMatrix(lastName.toLowerCase(), freeDocId);
-                this.addToDoubleWordIndex(firstName.toLowerCase(), freeDocId);
-                this.addToDoubleWordIndex(lastName.toLowerCase(), freeDocId);
+                this.addToMatrix(firstName.toLowerCase(), FREE_DOC_ID);
+                this.addToMatrix(lastName.toLowerCase(), FREE_DOC_ID);
+                this.addToDoubleWordIndex(firstName.toLowerCase(), FREE_DOC_ID);
+                this.addToDoubleWordIndex(lastName.toLowerCase(), FREE_DOC_ID);
 
                 String [] bookTitle = content.substring(
                         content.indexOf("<book-title>")+12,
                         content.indexOf("</book-title>")).split(" ");
                 for (int i = 0; i < bookTitle.length; i++) {
-                    this.addToMatrix(bookTitle[i].toLowerCase(), freeDocId);
-                    this.addToDoubleWordIndex(bookTitle[i].toLowerCase(), freeDocId);
-                    this.addToDoubleWordIndex(bookTitle[i].toLowerCase(), freeDocId);
+                    this.addToMatrix(bookTitle[i].toLowerCase(), FREE_DOC_ID);
+                    this.addToDoubleWordIndex(bookTitle[i].toLowerCase(), FREE_DOC_ID);
+                    this.addToDoubleWordIndex(bookTitle[i].toLowerCase(), FREE_DOC_ID);
                 }
 
-                //  get/add body
                 String body = content.substring(content.indexOf("<body>")+6,
                         content.indexOf("</body>"));
                 body = body.replaceAll("</v><v>", " ");
@@ -69,18 +75,23 @@ public class Holder {
 
                 String[] line = body.split(" ");
                     for (int i = 0; i < line.length-1; i++) {
-                        this.addToMatrix(line[i], freeDocId);
-                        this.addToCoordIndex(line[i], freeDocId, i);
-                        this.addToDoubleWordIndex(line[i]+" "+line[i+1], freeDocId);
+                        this.addToMatrix(line[i], FREE_DOC_ID);
+                        this.addToCoordIndex(line[i], FREE_DOC_ID, i);
+                        this.addToDoubleWordIndex(line[i]+" "+line[i+1], FREE_DOC_ID);
                     }
-                 this.addToMatrix(line[line.length-1], freeDocId);
-                 this.addToCoordIndex(line[line.length-1], freeDocId, line.length-1);
-                    freeDocId++;
+                 this.addToMatrix(line[line.length-1], FREE_DOC_ID);
+                 this.addToCoordIndex(line[line.length-1], FREE_DOC_ID, line.length-1);
+                    FREE_DOC_ID++;
                 }
             }
         createInvertIndex();
     }
 
+   /**
+    * Add one word to incidence matrix
+    * @param elem Word
+    * @param docId Number of document
+    */
     public void addToMatrix(String elem, int docId) {
         if(!matrix.containsKey(elem)) {
             BitSet docs = new BitSet(docNumber);
@@ -94,7 +105,12 @@ public class Holder {
         }
     }
     
-     public void addToDoubleWordIndex(String elem, int docId) {
+    /**
+     * Add word to double-word index
+     * @param elem Word
+     * @param docId Number of document
+     */
+    public void addToDoubleWordIndex(String elem, int docId) {
         if(!doubleWordIndex.containsKey(elem)) {
             Set docs = new HashSet();
             docs.add(docId);
@@ -103,8 +119,14 @@ public class Holder {
            doubleWordIndex.get(elem).add(docId);
         }
     }
-     
-      public void addToCoordIndex(String elem, int docId, int position) {
+    
+    /**
+     * Add word to coordinate index
+     * @param elem Word
+     * @param docId Number of document
+     * @param position Position of a word in document
+     */
+    public void addToCoordIndex(String elem, int docId, int position) {
         if(!coordIndex.containsKey(elem)) {
             HashMap<Integer, ArrayList<Integer>> docs = new HashMap();
             ArrayList<Integer> coords = new ArrayList();
@@ -120,11 +142,21 @@ public class Holder {
         }
     }
     
+    /**
+     * Bool searh on a native language
+     * @param query Query
+     * @throws Exception 
+     */
     public void boolSearch(String query) throws Exception {
         String text = query.replaceAll(" +", " ").replaceAll(" ", " AND ");
            boolSearchByFraze(text);
     }
     
+    /**
+     * Bool searh with boolean operators AND, OR, NOT
+     * @param query Query
+     * @throws Exception 
+     */
     public void boolSearchByFraze(String query) throws Exception {
         boolean skip = false;
         ArrayList<BitSet> terms = new ArrayList<>();
@@ -187,7 +219,12 @@ public class Holder {
             }
         }
     }
-         
+    
+    /**
+     * Search by double-word index
+     * @param query Query
+     * @throws Exception 
+     */
     public void doubleWordSearch(String query) throws Exception {
         String[] line = query.split(" ");
         Set<Integer> result = new HashSet();
@@ -215,11 +252,15 @@ public class Holder {
         }   
     }
     
-     public void coordIndexSearch(String query) throws Exception {
+    /**
+     * Search by coordinate index
+     * @param query Query
+     * @throws Exception 
+     */
+    public void coordIndexSearch(String query) throws Exception {
         String[] line = query.split(" ");
         HashMap<Integer, ArrayList<Integer>> result = new HashMap();
-        
-             
+         
         if (line.length == 0) {
             System.out.println("Try another query");
             System.exit(0);
@@ -244,12 +285,18 @@ public class Holder {
                 }
                 if(res) {
                     System.out.println(getDocName(docId));
-                }
-               
+                }   
             }  
         }   
     }
-     
+    
+    /**
+     * Utility method to intersect two coordinate lists
+     * @param list1 First list
+     * @param list2 Second list
+     * @param k length
+     * @return 
+     */
     private boolean intersect(ArrayList<Integer> list1, ArrayList<Integer> list2, int k) {
         int i = 0;
         int j = 0;
@@ -264,6 +311,11 @@ public class Holder {
     return false;
     }
     
+    /**
+     * Utility method to invert BitSet
+     * @param in Input BitSet
+     * @return 
+     */
     private BitSet invert(BitSet in) {
         BitSet docs = new BitSet(docNumber);
             for(int i = 0; i < docNumber; i++) {
@@ -272,6 +324,9 @@ public class Holder {
     return docs;
     }
     
+    /**
+     * Building invert index form incidence matrix
+     */
     private void createInvertIndex() {
         for(Entry elem : matrix.entrySet()) {
             ArrayList<Integer> docIds= new ArrayList<>();
@@ -284,8 +339,13 @@ public class Holder {
         }
     }
     
-    private String getDocName(int i) {
-        return docIdList.get(i);
+    /**
+     * Return document name by id
+     * @param id Document id
+     * @return 
+     */
+    private String getDocName(int id) {
+        return docIdList.get(id);
     }
     
     private Exception NoSuchElementException() {
